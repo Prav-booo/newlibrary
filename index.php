@@ -12,9 +12,9 @@ session_start ();
     <meta name="author" content="">
     <link rel="icon" href="favicon.ico">
     <title>Library </title>
-    <link href="dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
-    <script src="assets/js/ie-emulation-modes-warning.js"></script>
+    <link href="bootstrap.min.css" rel="stylesheet">
+    <link href="ie10-viewport-bug-workaround.css" rel="stylesheet">
+    <script src="ie-emulation-modes-warning.js"></script>
     <link href="style.css" rel="stylesheet" type="text/css">
   </head>
   
@@ -34,15 +34,15 @@ session_start ();
     
 					<div class="carousel-inner">
 							<div class="item active">
-								<img src="assets/img/ing.png" alt="libary" style="width:100%;">
+								<img src="ing.png" alt="libary" style="width:100%;">
 							</div>
 
 							<div class="item">
-								<img src="assets/img/ing1.png" alt="libary" style="width:100%;">
+								<img src="ing1.png" alt="libary" style="width:100%;">
 							</div>
 				
 							<div class="item">
-								<img src="assets/img/ing2.png" alt="libary" style="width:100%;">
+								<img src="ing2.png" alt="libary" style="width:100%;">
 							</div>
 					</div>
 
@@ -81,8 +81,8 @@ session_start ();
 		
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
-    <script src="dist/js/bootstrap.min.js"></script>
-    <script src="assets/js/vendor/holder.min.js"></script>
-    <script src="assets/js/ie10-viewport-bug-workaround.js"></script>
+    <script src="bootstrap.min.js"></script>
+    <script src="vendor/holder.min.js"></script>
+    <script src="ie10-viewport-bug-workaround.js"></script>
   </body>
 </html>
