@@ -1,94 +1,78 @@
-/* ========================================================================
- * Bootstrap: alert.js v3.3.7
- * http://getbootstrap.com/javascript/#alerts
- * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
+$(function () {
   'use strict';
 
-  // ALERT CLASS DEFINITION
-  // ======================
+  QUnit.module('alert plugin')
 
-  var dismiss = '[data-dismiss="alert"]'
-  var Alert   = function (el) {
-    $(el).on('click', dismiss, this.close)
-  }
+  QUnit.test('should be defined on jquery object', function (assert) {
+    assert.expect(1)
+    assert.ok($(document.body).alert, 'alert method is defined')
+  })
 
-  Alert.VERSION = '3.3.7'
-
-  Alert.TRANSITION_DURATION = 150
-
-  Alert.prototype.close = function (e) {
-    var $this    = $(this)
-    var selector = $this.attr('data-target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+  QUnit.module('alert', {
+    beforeEach: function () {
+      // Run all tests in noConflict mode -- it's the only way to ensure that the plugin works in noConflict mode
+      $.fn.bootstrapAlert = $.fn.alert.noConflict()
+    },
+    afterEach: function () {
+      $.fn.alert = $.fn.bootstrapAlert
+      delete $.fn.bootstrapAlert
     }
+  })
 
-    var $parent = $(selector === '#' ? [] : selector)
+  QUnit.test('should provide no conflict', function (assert) {
+    assert.expect(1)
+    assert.strictEqual($.fn.alert, undefined, 'alert was set back to undefined (org value)')
+  })
 
-    if (e) e.preventDefault()
+  QUnit.test('should return jquery collection containing the element', function (assert) {
+    assert.expect(2)
+    var $el = $('<div/>')
+    var $alert = $el.bootstrapAlert()
+    assert.ok($alert instanceof $, 'returns jquery collection')
+    assert.strictEqual($alert[0], $el[0], 'collection contains element')
+  })
 
-    if (!$parent.length) {
-      $parent = $this.closest('.alert')
-    }
+  QUnit.test('should fade element out on clicking .close', function (assert) {
+    assert.expect(1)
+    var alertHTML = '<div class="alert alert-danger fade in">'
+        + '<a class="close" href="#" data-dismiss="alert">×</a>'
+        + '<p><strong>Holy guacamole!</strong> Best check yo self, you\'re not looking too good.</p>'
+        + '</div>'
+    var $alert = $(alertHTML).bootstrapAlert()
 
-    $parent.trigger(e = $.Event('close.bs.alert'))
+    $alert.find('.close').trigger('click')
 
-    if (e.isDefaultPrevented()) return
+    assert.strictEqual($alert.hasClass('in'), false, 'remove .in class on .close click')
+  })
 
-    $parent.removeClass('in')
+  QUnit.test('should remove element when clicking .close', function (assert) {
+    assert.expect(2)
+    var alertHTML = '<div class="alert alert-danger fade in">'
+        + '<a class="close" href="#" data-dismiss="alert">×</a>'
+        + '<p><strong>Holy guacamole!</strong> Best check yo self, you\'re not looking too good.</p>'
+        + '</div>'
+    var $alert = $(alertHTML).appendTo('#qunit-fixture').bootstrapAlert()
 
-    function removeElement() {
-      // detach from parent, fire event then clean up data
-      $parent.detach().trigger('closed.bs.alert').remove()
-    }
+    assert.notEqual($('#qunit-fixture').find('.alert').length, 0, 'element added to dom')
 
-    $.support.transition && $parent.hasClass('fade') ?
-      $parent
-        .one('bsTransitionEnd', removeElement)
-        .emulateTransitionEnd(Alert.TRANSITION_DURATION) :
-      removeElement()
-  }
+    $alert.find('.close').trigger('click')
 
+    assert.strictEqual($('#qunit-fixture').find('.alert').length, 0, 'element removed from dom')
+  })
 
-  // ALERT PLUGIN DEFINITION
-  // =======================
+  QUnit.test('should not fire closed when close is prevented', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+    $('<div class="alert"/>')
+      .on('close.bs.alert', function (e) {
+        e.preventDefault()
+        assert.ok(true, 'close event fired')
+        done()
+      })
+      .on('closed.bs.alert', function () {
+        assert.ok(false, 'closed event fired')
+      })
+      .bootstrapAlert('close')
+  })
 
-  function Plugin(option) {
-    return this.each(function () {
-      var $this = $(this)
-      var data  = $this.data('bs.alert')
-
-      if (!data) $this.data('bs.alert', (data = new Alert(this)))
-      if (typeof option == 'string') data[option].call($this)
-    })
-  }
-
-  var old = $.fn.alert
-
-  $.fn.alert             = Plugin
-  $.fn.alert.Constructor = Alert
-
-
-  // ALERT NO CONFLICT
-  // =================
-
-  $.fn.alert.noConflict = function () {
-    $.fn.alert = old
-    return this
-  }
-
-
-  // ALERT DATA-API
-  // ==============
-
-  $(document).on('click.bs.alert.data-api', dismiss, Alert.prototype.close)
-
-}(jQuery);
+})

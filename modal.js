@@ -1,339 +1,377 @@
-/* ========================================================================
- * Bootstrap: modal.js v3.3.7
- * http://getbootstrap.com/javascript/#modals
- * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
+$(function () {
   'use strict';
 
-  // MODAL CLASS DEFINITION
-  // ======================
-
-  var Modal = function (element, options) {
-    this.options             = options
-    this.$body               = $(document.body)
-    this.$element            = $(element)
-    this.$dialog             = this.$element.find('.modal-dialog')
-    this.$backdrop           = null
-    this.isShown             = null
-    this.originalBodyPad     = null
-    this.scrollbarWidth      = 0
-    this.ignoreBackdropClick = false
-
-    if (this.options.remote) {
-      this.$element
-        .find('.modal-content')
-        .load(this.options.remote, $.proxy(function () {
-          this.$element.trigger('loaded.bs.modal')
-        }, this))
-    }
-  }
-
-  Modal.VERSION  = '3.3.7'
-
-  Modal.TRANSITION_DURATION = 300
-  Modal.BACKDROP_TRANSITION_DURATION = 150
-
-  Modal.DEFAULTS = {
-    backdrop: true,
-    keyboard: true,
-    show: true
-  }
-
-  Modal.prototype.toggle = function (_relatedTarget) {
-    return this.isShown ? this.hide() : this.show(_relatedTarget)
-  }
-
-  Modal.prototype.show = function (_relatedTarget) {
-    var that = this
-    var e    = $.Event('show.bs.modal', { relatedTarget: _relatedTarget })
-
-    this.$element.trigger(e)
-
-    if (this.isShown || e.isDefaultPrevented()) return
-
-    this.isShown = true
-
-    this.checkScrollbar()
-    this.setScrollbar()
-    this.$body.addClass('modal-open')
-
-    this.escape()
-    this.resize()
-
-    this.$element.on('click.dismiss.bs.modal', '[data-dismiss="modal"]', $.proxy(this.hide, this))
-
-    this.$dialog.on('mousedown.dismiss.bs.modal', function () {
-      that.$element.one('mouseup.dismiss.bs.modal', function (e) {
-        if ($(e.target).is(that.$element)) that.ignoreBackdropClick = true
-      })
-    })
-
-    this.backdrop(function () {
-      var transition = $.support.transition && that.$element.hasClass('fade')
-
-      if (!that.$element.parent().length) {
-        that.$element.appendTo(that.$body) // don't move modals dom position
-      }
-
-      that.$element
-        .show()
-        .scrollTop(0)
-
-      that.adjustDialog()
-
-      if (transition) {
-        that.$element[0].offsetWidth // force reflow
-      }
-
-      that.$element.addClass('in')
-
-      that.enforceFocus()
-
-      var e = $.Event('shown.bs.modal', { relatedTarget: _relatedTarget })
-
-      transition ?
-        that.$dialog // wait for modal to slide in
-          .one('bsTransitionEnd', function () {
-            that.$element.trigger('focus').trigger(e)
-          })
-          .emulateTransitionEnd(Modal.TRANSITION_DURATION) :
-        that.$element.trigger('focus').trigger(e)
-    })
-  }
-
-  Modal.prototype.hide = function (e) {
-    if (e) e.preventDefault()
-
-    e = $.Event('hide.bs.modal')
-
-    this.$element.trigger(e)
-
-    if (!this.isShown || e.isDefaultPrevented()) return
-
-    this.isShown = false
-
-    this.escape()
-    this.resize()
-
-    $(document).off('focusin.bs.modal')
-
-    this.$element
-      .removeClass('in')
-      .off('click.dismiss.bs.modal')
-      .off('mouseup.dismiss.bs.modal')
-
-    this.$dialog.off('mousedown.dismiss.bs.modal')
-
-    $.support.transition && this.$element.hasClass('fade') ?
-      this.$element
-        .one('bsTransitionEnd', $.proxy(this.hideModal, this))
-        .emulateTransitionEnd(Modal.TRANSITION_DURATION) :
-      this.hideModal()
-  }
-
-  Modal.prototype.enforceFocus = function () {
-    $(document)
-      .off('focusin.bs.modal') // guard against infinite focus loop
-      .on('focusin.bs.modal', $.proxy(function (e) {
-        if (document !== e.target &&
-            this.$element[0] !== e.target &&
-            !this.$element.has(e.target).length) {
-          this.$element.trigger('focus')
-        }
-      }, this))
-  }
-
-  Modal.prototype.escape = function () {
-    if (this.isShown && this.options.keyboard) {
-      this.$element.on('keydown.dismiss.bs.modal', $.proxy(function (e) {
-        e.which == 27 && this.hide()
-      }, this))
-    } else if (!this.isShown) {
-      this.$element.off('keydown.dismiss.bs.modal')
-    }
-  }
-
-  Modal.prototype.resize = function () {
-    if (this.isShown) {
-      $(window).on('resize.bs.modal', $.proxy(this.handleUpdate, this))
-    } else {
-      $(window).off('resize.bs.modal')
-    }
-  }
-
-  Modal.prototype.hideModal = function () {
-    var that = this
-    this.$element.hide()
-    this.backdrop(function () {
-      that.$body.removeClass('modal-open')
-      that.resetAdjustments()
-      that.resetScrollbar()
-      that.$element.trigger('hidden.bs.modal')
-    })
-  }
-
-  Modal.prototype.removeBackdrop = function () {
-    this.$backdrop && this.$backdrop.remove()
-    this.$backdrop = null
-  }
-
-  Modal.prototype.backdrop = function (callback) {
-    var that = this
-    var animate = this.$element.hasClass('fade') ? 'fade' : ''
-
-    if (this.isShown && this.options.backdrop) {
-      var doAnimate = $.support.transition && animate
-
-      this.$backdrop = $(document.createElement('div'))
-        .addClass('modal-backdrop ' + animate)
-        .appendTo(this.$body)
-
-      this.$element.on('click.dismiss.bs.modal', $.proxy(function (e) {
-        if (this.ignoreBackdropClick) {
-          this.ignoreBackdropClick = false
-          return
-        }
-        if (e.target !== e.currentTarget) return
-        this.options.backdrop == 'static'
-          ? this.$element[0].focus()
-          : this.hide()
-      }, this))
-
-      if (doAnimate) this.$backdrop[0].offsetWidth // force reflow
-
-      this.$backdrop.addClass('in')
-
-      if (!callback) return
-
-      doAnimate ?
-        this.$backdrop
-          .one('bsTransitionEnd', callback)
-          .emulateTransitionEnd(Modal.BACKDROP_TRANSITION_DURATION) :
-        callback()
-
-    } else if (!this.isShown && this.$backdrop) {
-      this.$backdrop.removeClass('in')
-
-      var callbackRemove = function () {
-        that.removeBackdrop()
-        callback && callback()
-      }
-      $.support.transition && this.$element.hasClass('fade') ?
-        this.$backdrop
-          .one('bsTransitionEnd', callbackRemove)
-          .emulateTransitionEnd(Modal.BACKDROP_TRANSITION_DURATION) :
-        callbackRemove()
-
-    } else if (callback) {
-      callback()
-    }
-  }
-
-  // these following methods are used to handle overflowing modals
-
-  Modal.prototype.handleUpdate = function () {
-    this.adjustDialog()
-  }
-
-  Modal.prototype.adjustDialog = function () {
-    var modalIsOverflowing = this.$element[0].scrollHeight > document.documentElement.clientHeight
-
-    this.$element.css({
-      paddingLeft:  !this.bodyIsOverflowing && modalIsOverflowing ? this.scrollbarWidth : '',
-      paddingRight: this.bodyIsOverflowing && !modalIsOverflowing ? this.scrollbarWidth : ''
-    })
-  }
-
-  Modal.prototype.resetAdjustments = function () {
-    this.$element.css({
-      paddingLeft: '',
-      paddingRight: ''
-    })
-  }
-
-  Modal.prototype.checkScrollbar = function () {
-    var fullWindowWidth = window.innerWidth
-    if (!fullWindowWidth) { // workaround for missing window.innerWidth in IE8
-      var documentElementRect = document.documentElement.getBoundingClientRect()
-      fullWindowWidth = documentElementRect.right - Math.abs(documentElementRect.left)
-    }
-    this.bodyIsOverflowing = document.body.clientWidth < fullWindowWidth
-    this.scrollbarWidth = this.measureScrollbar()
-  }
-
-  Modal.prototype.setScrollbar = function () {
-    var bodyPad = parseInt((this.$body.css('padding-right') || 0), 10)
-    this.originalBodyPad = document.body.style.paddingRight || ''
-    if (this.bodyIsOverflowing) this.$body.css('padding-right', bodyPad + this.scrollbarWidth)
-  }
-
-  Modal.prototype.resetScrollbar = function () {
-    this.$body.css('padding-right', this.originalBodyPad)
-  }
-
-  Modal.prototype.measureScrollbar = function () { // thx walsh
-    var scrollDiv = document.createElement('div')
-    scrollDiv.className = 'modal-scrollbar-measure'
-    this.$body.append(scrollDiv)
-    var scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth
-    this.$body[0].removeChild(scrollDiv)
-    return scrollbarWidth
-  }
-
-
-  // MODAL PLUGIN DEFINITION
-  // =======================
-
-  function Plugin(option, _relatedTarget) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.modal')
-      var options = $.extend({}, Modal.DEFAULTS, $this.data(), typeof option == 'object' && option)
-
-      if (!data) $this.data('bs.modal', (data = new Modal(this, options)))
-      if (typeof option == 'string') data[option](_relatedTarget)
-      else if (options.show) data.show(_relatedTarget)
-    })
-  }
-
-  var old = $.fn.modal
-
-  $.fn.modal             = Plugin
-  $.fn.modal.Constructor = Modal
-
-
-  // MODAL NO CONFLICT
-  // =================
-
-  $.fn.modal.noConflict = function () {
-    $.fn.modal = old
-    return this
-  }
-
-
-  // MODAL DATA-API
-  // ==============
-
-  $(document).on('click.bs.modal.data-api', '[data-toggle="modal"]', function (e) {
-    var $this   = $(this)
-    var href    = $this.attr('href')
-    var $target = $($this.attr('data-target') || (href && href.replace(/.*(?=#[^\s]+$)/, ''))) // strip for ie7
-    var option  = $target.data('bs.modal') ? 'toggle' : $.extend({ remote: !/#/.test(href) && href }, $target.data(), $this.data())
-
-    if ($this.is('a')) e.preventDefault()
-
-    $target.one('show.bs.modal', function (showEvent) {
-      if (showEvent.isDefaultPrevented()) return // only register focus restorer if modal will actually get shown
-      $target.one('hidden.bs.modal', function () {
-        $this.is(':visible') && $this.trigger('focus')
-      })
-    })
-    Plugin.call($target, option, this)
+  QUnit.module('modal plugin')
+
+  QUnit.test('should be defined on jquery object', function (assert) {
+    assert.expect(1)
+    assert.ok($(document.body).modal, 'modal method is defined')
   })
 
-}(jQuery);
+  QUnit.module('modal', {
+    beforeEach: function () {
+      // Run all tests in noConflict mode -- it's the only way to ensure that the plugin works in noConflict mode
+      $.fn.bootstrapModal = $.fn.modal.noConflict()
+    },
+    afterEach: function () {
+      $.fn.modal = $.fn.bootstrapModal
+      delete $.fn.bootstrapModal
+    }
+  })
+
+  QUnit.test('should provide no conflict', function (assert) {
+    assert.expect(1)
+    assert.strictEqual($.fn.modal, undefined, 'modal was set back to undefined (orig value)')
+  })
+
+  QUnit.test('should return jquery collection containing the element', function (assert) {
+    assert.expect(2)
+    var $el = $('<div id="modal-test"/>')
+    var $modal = $el.bootstrapModal()
+    assert.ok($modal instanceof $, 'returns jquery collection')
+    assert.strictEqual($modal[0], $el[0], 'collection contains element')
+  })
+
+  QUnit.test('should expose defaults var for settings', function (assert) {
+    assert.expect(1)
+    assert.ok($.fn.bootstrapModal.Constructor.DEFAULTS, 'default object exposed')
+  })
+
+  QUnit.test('should insert into dom when show method is called', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+
+    $('<div id="modal-test"/>')
+      .on('shown.bs.modal', function () {
+        assert.notEqual($('#modal-test').length, 0, 'modal inserted into dom')
+        done()
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should fire show event', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+
+    $('<div id="modal-test"/>')
+      .on('show.bs.modal', function () {
+        assert.ok(true, 'show event fired')
+        done()
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should not fire shown when show was prevented', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+
+    $('<div id="modal-test"/>')
+      .on('show.bs.modal', function (e) {
+        e.preventDefault()
+        assert.ok(true, 'show event fired')
+        done()
+      })
+      .on('shown.bs.modal', function () {
+        assert.ok(false, 'shown event fired')
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should hide modal when hide is called', function (assert) {
+    assert.expect(3)
+    var done = assert.async()
+
+    $('<div id="modal-test"/>')
+      .on('shown.bs.modal', function () {
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        assert.notEqual($('#modal-test').length, 0, 'modal inserted into dom')
+        $(this).bootstrapModal('hide')
+      })
+      .on('hidden.bs.modal', function () {
+        assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+        done()
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should toggle when toggle is called', function (assert) {
+    assert.expect(3)
+    var done = assert.async()
+
+    $('<div id="modal-test"/>')
+      .on('shown.bs.modal', function () {
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        assert.notEqual($('#modal-test').length, 0, 'modal inserted into dom')
+        $(this).bootstrapModal('toggle')
+      })
+      .on('hidden.bs.modal', function () {
+        assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+        done()
+      })
+      .bootstrapModal('toggle')
+  })
+
+  QUnit.test('should remove from dom when click [data-dismiss="modal"]', function (assert) {
+    assert.expect(3)
+    var done = assert.async()
+
+    $('<div id="modal-test"><span class="close" data-dismiss="modal"/></div>')
+      .on('shown.bs.modal', function () {
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        assert.notEqual($('#modal-test').length, 0, 'modal inserted into dom')
+        $(this).find('.close').trigger('click')
+      })
+      .on('hidden.bs.modal', function () {
+        assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+        done()
+      })
+      .bootstrapModal('toggle')
+  })
+
+  QUnit.test('should allow modal close with "backdrop:false"', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
+
+    $('<div id="modal-test" data-backdrop="false"/>')
+      .on('shown.bs.modal', function () {
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        $(this).bootstrapModal('hide')
+      })
+      .on('hidden.bs.modal', function () {
+        assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+        done()
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should close modal when clicking outside of modal-content', function (assert) {
+    assert.expect(3)
+    var done = assert.async()
+
+    $('<div id="modal-test"><div class="contents"/></div>')
+      .on('shown.bs.modal', function () {
+        assert.notEqual($('#modal-test').length, 0, 'modal inserted into dom')
+        $('.contents').trigger('click')
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        $('#modal-test').trigger('click')
+      })
+      .on('hidden.bs.modal', function () {
+        assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+        done()
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should close modal when escape key is pressed via keydown', function (assert) {
+    assert.expect(3)
+    var done = assert.async()
+
+    var $div = $('<div id="modal-test"/>')
+    $div
+      .on('shown.bs.modal', function () {
+        assert.ok($('#modal-test').length, 'modal inserted into dom')
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        $div.trigger($.Event('keydown', { which: 27 }))
+
+        setTimeout(function () {
+          assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+          $div.remove()
+          done()
+        }, 0)
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should not close modal when escape key is pressed via keyup', function (assert) {
+    assert.expect(3)
+    var done = assert.async()
+
+    var $div = $('<div id="modal-test"/>')
+    $div
+      .on('shown.bs.modal', function () {
+        assert.ok($('#modal-test').length, 'modal inserted into dom')
+        assert.ok($('#modal-test').is(':visible'), 'modal visible')
+        $div.trigger($.Event('keyup', { which: 27 }))
+
+        setTimeout(function () {
+          assert.ok($div.is(':visible'), 'modal still visible')
+          $div.remove()
+          done()
+        }, 0)
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should trigger hide event once when clicking outside of modal-content', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+
+    var triggered
+
+    $('<div id="modal-test"><div class="contents"/></div>')
+      .on('shown.bs.modal', function () {
+        triggered = 0
+        $('#modal-test').trigger('click')
+      })
+      .on('hide.bs.modal', function () {
+        triggered += 1
+        assert.strictEqual(triggered, 1, 'modal hide triggered once')
+        done()
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should close reopened modal with [data-dismiss="modal"] click', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
+
+    $('<div id="modal-test"><div class="contents"><div id="close" data-dismiss="modal"/></div></div>')
+      .one('shown.bs.modal', function () {
+        $('#close').trigger('click')
+      })
+      .one('hidden.bs.modal', function () {
+        // after one open-close cycle
+        assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+        $(this)
+          .one('shown.bs.modal', function () {
+            $('#close').trigger('click')
+          })
+          .one('hidden.bs.modal', function () {
+            assert.ok(!$('#modal-test').is(':visible'), 'modal hidden')
+            done()
+          })
+          .bootstrapModal('show')
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should restore focus to toggling element when modal is hidden after having been opened via data-api', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+
+    var $toggleBtn = $('<button data-toggle="modal" data-target="#modal-test"/>').appendTo('#qunit-fixture')
+
+    $('<div id="modal-test"><div class="contents"><div id="close" data-dismiss="modal"/></div></div>')
+      .on('hidden.bs.modal', function () {
+        setTimeout(function () {
+          assert.ok($(document.activeElement).is($toggleBtn), 'toggling element is once again focused')
+          done()
+        }, 0)
+      })
+      .on('shown.bs.modal', function () {
+        $('#close').trigger('click')
+      })
+      .appendTo('#qunit-fixture')
+
+    $toggleBtn.trigger('click')
+  })
+
+  QUnit.test('should not restore focus to toggling element if the associated show event gets prevented', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+    var $toggleBtn = $('<button data-toggle="modal" data-target="#modal-test"/>').appendTo('#qunit-fixture')
+    var $otherBtn = $('<button id="other-btn"/>').appendTo('#qunit-fixture')
+
+    $('<div id="modal-test"><div class="contents"><div id="close" data-dismiss="modal"/></div>')
+      .one('show.bs.modal', function (e) {
+        e.preventDefault()
+        $otherBtn.trigger('focus')
+        setTimeout($.proxy(function () {
+          $(this).bootstrapModal('show')
+        }, this), 0)
+      })
+      .on('hidden.bs.modal', function () {
+        setTimeout(function () {
+          assert.ok($(document.activeElement).is($otherBtn), 'focus returned to toggling element')
+          done()
+        }, 0)
+      })
+      .on('shown.bs.modal', function () {
+        $('#close').trigger('click')
+      })
+      .appendTo('#qunit-fixture')
+
+    $toggleBtn.trigger('click')
+  })
+
+  QUnit.test('should restore inline body padding after closing', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
+    var originalBodyPad = 0
+    var $body = $(document.body)
+
+    $body.css('padding-right', originalBodyPad)
+
+    $('<div id="modal-test"/>')
+      .on('hidden.bs.modal', function () {
+        var currentBodyPad = parseInt($body.css('padding-right'), 10)
+        assert.notStrictEqual($body.attr('style'), '', 'body has non-empty style attribute')
+        assert.strictEqual(currentBodyPad, originalBodyPad, 'original body padding was not changed')
+        $body.removeAttr('style')
+        done()
+      })
+      .on('shown.bs.modal', function () {
+        $(this).bootstrapModal('hide')
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should ignore values set via CSS when trying to restore body padding after closing', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+    var $body = $(document.body)
+    var $style = $('<style>body { padding-right: 42px; }</style>').appendTo('head')
+
+    $('<div id="modal-test"/>')
+      .on('hidden.bs.modal', function () {
+        assert.ok(!$body.attr('style'), 'body does not have inline padding set')
+        $style.remove()
+        done()
+      })
+      .on('shown.bs.modal', function () {
+        $(this).bootstrapModal('hide')
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should ignore other inline styles when trying to restore body padding after closing', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
+    var $body = $(document.body)
+    var $style = $('<style>body { padding-right: 42px; }</style>').appendTo('head')
+
+    $body.css('color', 'red')
+
+    $('<div id="modal-test"/>')
+      .on('hidden.bs.modal', function () {
+        assert.strictEqual($body[0].style.paddingRight, '', 'body does not have inline padding set')
+        assert.strictEqual($body[0].style.color, 'red', 'body still has other inline styles set')
+        $body.removeAttr('style')
+        $style.remove()
+        done()
+      })
+      .on('shown.bs.modal', function () {
+        $(this).bootstrapModal('hide')
+      })
+      .bootstrapModal('show')
+  })
+
+  QUnit.test('should properly restore non-pixel inline body padding after closing', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+    var $body = $(document.body)
+
+    $body.css('padding-right', '5%')
+
+    $('<div id="modal-test"/>')
+      .on('hidden.bs.modal', function () {
+        assert.strictEqual($body[0].style.paddingRight, '5%', 'body does not have inline padding set')
+        $body.removeAttr('style')
+        done()
+      })
+      .on('shown.bs.modal', function () {
+        $(this).bootstrapModal('hide')
+      })
+      .bootstrapModal('show')
+  })
+})

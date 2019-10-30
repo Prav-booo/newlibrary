@@ -1,125 +1,168 @@
-/* ========================================================================
- * Bootstrap: button.js v3.3.7
- * http://getbootstrap.com/javascript/#buttons
- * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
+$(function () {
   'use strict';
 
-  // BUTTON PUBLIC CLASS DEFINITION
-  // ==============================
+  QUnit.module('button plugin')
 
-  var Button = function (element, options) {
-    this.$element  = $(element)
-    this.options   = $.extend({}, Button.DEFAULTS, options)
-    this.isLoading = false
-  }
+  QUnit.test('should be defined on jquery object', function (assert) {
+    assert.expect(1)
+    assert.ok($(document.body).button, 'button method is defined')
+  })
 
-  Button.VERSION  = '3.3.7'
-
-  Button.DEFAULTS = {
-    loadingText: 'loading...'
-  }
-
-  Button.prototype.setState = function (state) {
-    var d    = 'disabled'
-    var $el  = this.$element
-    var val  = $el.is('input') ? 'val' : 'html'
-    var data = $el.data()
-
-    state += 'Text'
-
-    if (data.resetText == null) $el.data('resetText', $el[val]())
-
-    // push to event loop to allow forms to submit
-    setTimeout($.proxy(function () {
-      $el[val](data[state] == null ? this.options[state] : data[state])
-
-      if (state == 'loadingText') {
-        this.isLoading = true
-        $el.addClass(d).attr(d, d).prop(d, true)
-      } else if (this.isLoading) {
-        this.isLoading = false
-        $el.removeClass(d).removeAttr(d).prop(d, false)
-      }
-    }, this), 0)
-  }
-
-  Button.prototype.toggle = function () {
-    var changed = true
-    var $parent = this.$element.closest('[data-toggle="buttons"]')
-
-    if ($parent.length) {
-      var $input = this.$element.find('input')
-      if ($input.prop('type') == 'radio') {
-        if ($input.prop('checked')) changed = false
-        $parent.find('.active').removeClass('active')
-        this.$element.addClass('active')
-      } else if ($input.prop('type') == 'checkbox') {
-        if (($input.prop('checked')) !== this.$element.hasClass('active')) changed = false
-        this.$element.toggleClass('active')
-      }
-      $input.prop('checked', this.$element.hasClass('active'))
-      if (changed) $input.trigger('change')
-    } else {
-      this.$element.attr('aria-pressed', !this.$element.hasClass('active'))
-      this.$element.toggleClass('active')
+  QUnit.module('button', {
+    beforeEach: function () {
+      // Run all tests in noConflict mode -- it's the only way to ensure that the plugin works in noConflict mode
+      $.fn.bootstrapButton = $.fn.button.noConflict()
+    },
+    afterEach: function () {
+      $.fn.button = $.fn.bootstrapButton
+      delete $.fn.bootstrapButton
     }
-  }
+  })
 
+  QUnit.test('should provide no conflict', function (assert) {
+    assert.expect(1)
+    assert.strictEqual($.fn.button, undefined, 'button was set back to undefined (org value)')
+  })
 
-  // BUTTON PLUGIN DEFINITION
-  // ========================
+  QUnit.test('should return jquery collection containing the element', function (assert) {
+    assert.expect(2)
+    var $el = $('<div/>')
+    var $button = $el.bootstrapButton()
+    assert.ok($button instanceof $, 'returns jquery collection')
+    assert.strictEqual($button[0], $el[0], 'collection contains element')
+  })
 
-  function Plugin(option) {
-    return this.each(function () {
-      var $this   = $(this)
-      var data    = $this.data('bs.button')
-      var options = typeof option == 'object' && option
+  QUnit.test('should return set state to loading', function (assert) {
+    assert.expect(4)
+    var $btn = $('<button class="btn" data-loading-text="fat">mdo</button>')
+    assert.strictEqual($btn.html(), 'mdo', 'btn text equals mdo')
+    $btn.bootstrapButton('loading')
+    var done = assert.async()
+    setTimeout(function () {
+      assert.strictEqual($btn.html(), 'fat', 'btn text equals fat')
+      assert.ok($btn[0].hasAttribute('disabled'), 'btn is disabled')
+      assert.ok($btn.hasClass('disabled'), 'btn has disabled class')
+      done()
+    }, 0)
+  })
 
-      if (!data) $this.data('bs.button', (data = new Button(this, options)))
+  QUnit.test('should return reset state', function (assert) {
+    assert.expect(7)
+    var $btn = $('<button class="btn" data-loading-text="fat">mdo</button>')
+    assert.strictEqual($btn.html(), 'mdo', 'btn text equals mdo')
+    $btn.bootstrapButton('loading')
+    var doneOne = assert.async()
+    setTimeout(function () {
+      assert.strictEqual($btn.html(), 'fat', 'btn text equals fat')
+      assert.ok($btn[0].hasAttribute('disabled'), 'btn is disabled')
+      assert.ok($btn.hasClass('disabled'), 'btn has disabled class')
+      doneOne()
+      var doneTwo = assert.async()
+      $btn.bootstrapButton('reset')
+      setTimeout(function () {
+        assert.strictEqual($btn.html(), 'mdo', 'btn text equals mdo')
+        assert.ok(!$btn[0].hasAttribute('disabled'), 'btn is not disabled')
+        assert.ok(!$btn.hasClass('disabled'), 'btn does not have disabled class')
+        doneTwo()
+      }, 0)
+    }, 0)
+  })
 
-      if (option == 'toggle') data.toggle()
-      else if (option) data.setState(option)
-    })
-  }
+  QUnit.test('should work with an empty string as reset state', function (assert) {
+    assert.expect(7)
+    var $btn = $('<button class="btn" data-loading-text="fat"/>')
+    assert.strictEqual($btn.html(), '', 'btn text equals ""')
+    $btn.bootstrapButton('loading')
+    var doneOne = assert.async()
+    setTimeout(function () {
+      assert.strictEqual($btn.html(), 'fat', 'btn text equals fat')
+      assert.ok($btn[0].hasAttribute('disabled'), 'btn is disabled')
+      assert.ok($btn.hasClass('disabled'), 'btn has disabled class')
+      doneOne()
+      var doneTwo = assert.async()
+      $btn.bootstrapButton('reset')
+      setTimeout(function () {
+        assert.strictEqual($btn.html(), '', 'btn text equals ""')
+        assert.ok(!$btn[0].hasAttribute('disabled'), 'btn is not disabled')
+        assert.ok(!$btn.hasClass('disabled'), 'btn does not have disabled class')
+        doneTwo()
+      }, 0)
+    }, 0)
+  })
 
-  var old = $.fn.button
+  QUnit.test('should toggle active', function (assert) {
+    assert.expect(2)
+    var $btn = $('<button class="btn" data-toggle="button">mdo</button>')
+    assert.ok(!$btn.hasClass('active'), 'btn does not have active class')
+    $btn.bootstrapButton('toggle')
+    assert.ok($btn.hasClass('active'), 'btn has class active')
+  })
 
-  $.fn.button             = Plugin
-  $.fn.button.Constructor = Button
+  QUnit.test('should toggle active when btn children are clicked', function (assert) {
+    assert.expect(2)
+    var $btn = $('<button class="btn" data-toggle="button">mdo</button>')
+    var $inner = $('<i/>')
+    $btn
+      .append($inner)
+      .appendTo('#qunit-fixture')
+    assert.ok(!$btn.hasClass('active'), 'btn does not have active class')
+    $inner.trigger('click')
+    assert.ok($btn.hasClass('active'), 'btn has class active')
+  })
 
+  QUnit.test('should toggle aria-pressed', function (assert) {
+    assert.expect(2)
+    var $btn = $('<button class="btn" data-toggle="button" aria-pressed="false">redux</button>')
+    assert.strictEqual($btn.attr('aria-pressed'), 'false', 'btn aria-pressed state is false')
+    $btn.bootstrapButton('toggle')
+    assert.strictEqual($btn.attr('aria-pressed'), 'true', 'btn aria-pressed state is true')
+  })
 
-  // BUTTON NO CONFLICT
-  // ==================
+  QUnit.test('should toggle aria-pressed when btn children are clicked', function (assert) {
+    assert.expect(2)
+    var $btn = $('<button class="btn" data-toggle="button" aria-pressed="false">redux</button>')
+    var $inner = $('<i/>')
+    $btn
+      .append($inner)
+      .appendTo('#qunit-fixture')
+    assert.strictEqual($btn.attr('aria-pressed'), 'false', 'btn aria-pressed state is false')
+    $inner.trigger('click')
+    assert.strictEqual($btn.attr('aria-pressed'), 'true', 'btn aria-pressed state is true')
+  })
 
-  $.fn.button.noConflict = function () {
-    $.fn.button = old
-    return this
-  }
+  QUnit.test('should check for closest matching toggle', function (assert) {
+    assert.expect(12)
+    var groupHTML = '<div class="btn-group" data-toggle="buttons">'
+      + '<label class="btn btn-primary active">'
+      + '<input type="radio" name="options" id="option1" checked="true"> Option 1'
+      + '</label>'
+      + '<label class="btn btn-primary">'
+      + '<input type="radio" name="options" id="option2"> Option 2'
+      + '</label>'
+      + '<label class="btn btn-primary">'
+      + '<input type="radio" name="options" id="option3"> Option 3'
+      + '</label>'
+      + '</div>'
+    var $group = $(groupHTML).appendTo('#qunit-fixture')
 
+    var $btn1 = $group.children().eq(0)
+    var $btn2 = $group.children().eq(1)
 
-  // BUTTON DATA-API
-  // ===============
+    assert.ok($btn1.hasClass('active'), 'btn1 has active class')
+    assert.ok($btn1.find('input').prop('checked'), 'btn1 is checked')
+    assert.ok(!$btn2.hasClass('active'), 'btn2 does not have active class')
+    assert.ok(!$btn2.find('input').prop('checked'), 'btn2 is not checked')
+    $btn2.find('input').trigger('click')
+    assert.ok(!$btn1.hasClass('active'), 'btn1 does not have active class')
+    assert.ok(!$btn1.find('input').prop('checked'), 'btn1 is not checked')
+    assert.ok($btn2.hasClass('active'), 'btn2 has active class')
+    assert.ok($btn2.find('input').prop('checked'), 'btn2 is checked')
 
-  $(document)
-    .on('click.bs.button.data-api', '[data-toggle^="button"]', function (e) {
-      var $btn = $(e.target).closest('.btn')
-      Plugin.call($btn, 'toggle')
-      if (!($(e.target).is('input[type="radio"], input[type="checkbox"]'))) {
-        // Prevent double click on radios, and the double selections (so cancellation) on checkboxes
-        e.preventDefault()
-        // The target component still receive the focus
-        if ($btn.is('input,button')) $btn.trigger('focus')
-        else $btn.find('input:visible,button:visible').first().trigger('focus')
-      }
-    })
-    .on('focus.bs.button.data-api blur.bs.button.data-api', '[data-toggle^="button"]', function (e) {
-      $(e.target).closest('.btn').toggleClass('focus', /^focus(in)?$/.test(e.type))
-    })
+    $btn2.find('input').trigger('click') // clicking an already checked radio should not un-check it
+    assert.ok(!$btn1.hasClass('active'), 'btn1 does not have active class')
+    assert.ok(!$btn1.find('input').prop('checked'), 'btn1 is not checked')
+    assert.ok($btn2.hasClass('active'), 'btn2 has active class')
+    assert.ok($btn2.find('input').prop('checked'), 'btn2 is checked')
+  })
 
-}(jQuery);
+})

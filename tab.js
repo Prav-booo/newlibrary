@@ -1,155 +1,216 @@
-/* ========================================================================
- * Bootstrap: tab.js v3.3.7
- * http://getbootstrap.com/javascript/#tabs
- * ========================================================================
- * Copyright 2011-2016 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
- * ======================================================================== */
-
-
-+function ($) {
+$(function () {
   'use strict';
 
-  // TAB CLASS DEFINITION
-  // ====================
+  QUnit.module('tabs plugin')
 
-  var Tab = function (element) {
-    // jscs:disable requireDollarBeforejQueryAssignment
-    this.element = $(element)
-    // jscs:enable requireDollarBeforejQueryAssignment
-  }
+  QUnit.test('should be defined on jquery object', function (assert) {
+    assert.expect(1)
+    assert.ok($(document.body).tab, 'tabs method is defined')
+  })
 
-  Tab.VERSION = '3.3.7'
-
-  Tab.TRANSITION_DURATION = 150
-
-  Tab.prototype.show = function () {
-    var $this    = this.element
-    var $ul      = $this.closest('ul:not(.dropdown-menu)')
-    var selector = $this.data('target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+  QUnit.module('tabs', {
+    beforeEach: function () {
+      // Run all tests in noConflict mode -- it's the only way to ensure that the plugin works in noConflict mode
+      $.fn.bootstrapTab = $.fn.tab.noConflict()
+    },
+    afterEach: function () {
+      $.fn.tab = $.fn.bootstrapTab
+      delete $.fn.bootstrapTab
     }
+  })
 
-    if ($this.parent('li').hasClass('active')) return
+  QUnit.test('should provide no conflict', function (assert) {
+    assert.expect(1)
+    assert.strictEqual($.fn.tab, undefined, 'tab was set back to undefined (org value)')
+  })
 
-    var $previous = $ul.find('.active:last a')
-    var hideEvent = $.Event('hide.bs.tab', {
-      relatedTarget: $this[0]
-    })
-    var showEvent = $.Event('show.bs.tab', {
-      relatedTarget: $previous[0]
-    })
+  QUnit.test('should return jquery collection containing the element', function (assert) {
+    assert.expect(2)
+    var $el = $('<div/>')
+    var $tab = $el.bootstrapTab()
+    assert.ok($tab instanceof $, 'returns jquery collection')
+    assert.strictEqual($tab[0], $el[0], 'collection contains element')
+  })
 
-    $previous.trigger(hideEvent)
-    $this.trigger(showEvent)
+  QUnit.test('should activate element by tab id', function (assert) {
+    assert.expect(2)
+    var tabsHTML = '<ul class="tabs">'
+        + '<li><a href="#home">Home</a></li>'
+        + '<li><a href="#profile">Profile</a></li>'
+        + '</ul>'
 
-    if (showEvent.isDefaultPrevented() || hideEvent.isDefaultPrevented()) return
+    $('<ul><li id="home"/><li id="profile"/></ul>').appendTo('#qunit-fixture')
 
-    var $target = $(selector)
+    $(tabsHTML).find('li:last a').bootstrapTab('show')
+    assert.strictEqual($('#qunit-fixture').find('.active').attr('id'), 'profile')
 
-    this.activate($this.closest('li'), $ul)
-    this.activate($target, $target.parent(), function () {
-      $previous.trigger({
-        type: 'hidden.bs.tab',
-        relatedTarget: $this[0]
+    $(tabsHTML).find('li:first a').bootstrapTab('show')
+    assert.strictEqual($('#qunit-fixture').find('.active').attr('id'), 'home')
+  })
+
+  QUnit.test('should activate element by tab id', function (assert) {
+    assert.expect(2)
+    var pillsHTML = '<ul class="pills">'
+        + '<li><a href="#home">Home</a></li>'
+        + '<li><a href="#profile">Profile</a></li>'
+        + '</ul>'
+
+    $('<ul><li id="home"/><li id="profile"/></ul>').appendTo('#qunit-fixture')
+
+    $(pillsHTML).find('li:last a').bootstrapTab('show')
+    assert.strictEqual($('#qunit-fixture').find('.active').attr('id'), 'profile')
+
+    $(pillsHTML).find('li:first a').bootstrapTab('show')
+    assert.strictEqual($('#qunit-fixture').find('.active').attr('id'), 'home')
+  })
+
+  QUnit.test('should not fire shown when show is prevented', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
+
+    $('<div class="tab"/>')
+      .on('show.bs.tab', function (e) {
+        e.preventDefault()
+        assert.ok(true, 'show event fired')
+        done()
       })
-      $this.trigger({
-        type: 'shown.bs.tab',
-        relatedTarget: $previous[0]
+      .on('shown.bs.tab', function () {
+        assert.ok(false, 'shown event fired')
       })
-    })
-  }
+      .bootstrapTab('show')
+  })
 
-  Tab.prototype.activate = function (element, container, callback) {
-    var $active    = container.find('> .active')
-    var transition = callback
-      && $.support.transition
-      && ($active.length && $active.hasClass('fade') || !!container.find('> .fade').length)
+  QUnit.test('show and shown events should reference correct relatedTarget', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
 
-    function next() {
-      $active
-        .removeClass('active')
-        .find('> .dropdown-menu > .active')
-          .removeClass('active')
-        .end()
-        .find('[data-toggle="tab"]')
-          .attr('aria-expanded', false)
+    var dropHTML = '<ul class="drop">'
+        + '<li class="dropdown"><a data-toggle="dropdown" href="#">1</a>'
+        + '<ul class="dropdown-menu">'
+        + '<li><a href="#1-1" data-toggle="tab">1-1</a></li>'
+        + '<li><a href="#1-2" data-toggle="tab">1-2</a></li>'
+        + '</ul>'
+        + '</li>'
+        + '</ul>'
 
-      element
-        .addClass('active')
-        .find('[data-toggle="tab"]')
-          .attr('aria-expanded', true)
+    $(dropHTML)
+      .find('ul > li:first a')
+        .bootstrapTab('show')
+      .end()
+      .find('ul > li:last a')
+        .on('show.bs.tab', function (e) {
+          assert.strictEqual(e.relatedTarget.hash, '#1-1', 'references correct element as relatedTarget')
+        })
+        .on('shown.bs.tab', function (e) {
+          assert.strictEqual(e.relatedTarget.hash, '#1-1', 'references correct element as relatedTarget')
+          done()
+        })
+        .bootstrapTab('show')
+  })
 
-      if (transition) {
-        element[0].offsetWidth // reflow for transition
-        element.addClass('in')
-      } else {
-        element.removeClass('fade')
-      }
+  QUnit.test('should fire hide and hidden events', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
 
-      if (element.parent('.dropdown-menu').length) {
-        element
-          .closest('li.dropdown')
-            .addClass('active')
-          .end()
-          .find('[data-toggle="tab"]')
-            .attr('aria-expanded', true)
-      }
+    var tabsHTML = '<ul class="tabs">'
+        + '<li><a href="#home">Home</a></li>'
+        + '<li><a href="#profile">Profile</a></li>'
+        + '</ul>'
 
-      callback && callback()
-    }
+    $(tabsHTML)
+      .find('li:first a')
+        .on('hide.bs.tab', function () {
+          assert.ok(true, 'hide event fired')
+        })
+        .bootstrapTab('show')
+      .end()
+      .find('li:last a')
+        .bootstrapTab('show')
 
-    $active.length && transition ?
-      $active
-        .one('bsTransitionEnd', next)
-        .emulateTransitionEnd(Tab.TRANSITION_DURATION) :
-      next()
+    $(tabsHTML)
+      .find('li:first a')
+        .on('hidden.bs.tab', function () {
+          assert.ok(true, 'hidden event fired')
+          done()
+        })
+        .bootstrapTab('show')
+      .end()
+      .find('li:last a')
+        .bootstrapTab('show')
+  })
 
-    $active.removeClass('in')
-  }
+  QUnit.test('should not fire hidden when hide is prevented', function (assert) {
+    assert.expect(1)
+    var done = assert.async()
 
+    var tabsHTML = '<ul class="tabs">'
+        + '<li><a href="#home">Home</a></li>'
+        + '<li><a href="#profile">Profile</a></li>'
+        + '</ul>'
 
-  // TAB PLUGIN DEFINITION
-  // =====================
+    $(tabsHTML)
+      .find('li:first a')
+        .on('hide.bs.tab', function (e) {
+          e.preventDefault()
+          assert.ok(true, 'hide event fired')
+          done()
+        })
+        .on('hidden.bs.tab', function () {
+          assert.ok(false, 'hidden event fired')
+        })
+        .bootstrapTab('show')
+      .end()
+      .find('li:last a')
+        .bootstrapTab('show')
+  })
 
-  function Plugin(option) {
-    return this.each(function () {
-      var $this = $(this)
-      var data  = $this.data('bs.tab')
+  QUnit.test('hide and hidden events contain correct relatedTarget', function (assert) {
+    assert.expect(2)
+    var done = assert.async()
 
-      if (!data) $this.data('bs.tab', (data = new Tab(this)))
-      if (typeof option == 'string') data[option]()
-    })
-  }
+    var tabsHTML = '<ul class="tabs">'
+        + '<li><a href="#home">Home</a></li>'
+        + '<li><a href="#profile">Profile</a></li>'
+        + '</ul>'
 
-  var old = $.fn.tab
+    $(tabsHTML)
+      .find('li:first a')
+        .on('hide.bs.tab', function (e) {
+          assert.strictEqual(e.relatedTarget.hash, '#profile', 'references correct element as relatedTarget')
+        })
+        .on('hidden.bs.tab', function (e) {
+          assert.strictEqual(e.relatedTarget.hash, '#profile', 'references correct element as relatedTarget')
+          done()
+        })
+        .bootstrapTab('show')
+      .end()
+      .find('li:last a')
+        .bootstrapTab('show')
+  })
 
-  $.fn.tab             = Plugin
-  $.fn.tab.Constructor = Tab
+  QUnit.test('selected tab should have aria-expanded', function (assert) {
+    assert.expect(8)
+    var tabsHTML = '<ul class="nav nav-tabs">'
+        + '<li class="active"><a href="#home" toggle="tab" aria-expanded="true">Home</a></li>'
+        + '<li><a href="#profile" toggle="tab" aria-expanded="false">Profile</a></li>'
+        + '</ul>'
+    var $tabs = $(tabsHTML).appendTo('#qunit-fixture')
 
+    $tabs.find('li:first a').bootstrapTab('show')
+    assert.strictEqual($tabs.find('.active a').attr('aria-expanded'), 'true', 'shown tab has aria-expanded = true')
+    assert.strictEqual($tabs.find('li:not(.active) a').attr('aria-expanded'), 'false', 'hidden tab has aria-expanded = false')
 
-  // TAB NO CONFLICT
-  // ===============
+    $tabs.find('li:last a').trigger('click')
+    assert.strictEqual($tabs.find('.active a').attr('aria-expanded'), 'true', 'after click, shown tab has aria-expanded = true')
+    assert.strictEqual($tabs.find('li:not(.active) a').attr('aria-expanded'), 'false', 'after click, hidden tab has aria-expanded = false')
 
-  $.fn.tab.noConflict = function () {
-    $.fn.tab = old
-    return this
-  }
+    $tabs.find('li:first a').bootstrapTab('show')
+    assert.strictEqual($tabs.find('.active a').attr('aria-expanded'), 'true', 'shown tab has aria-expanded = true')
+    assert.strictEqual($tabs.find('li:not(.active) a').attr('aria-expanded'), 'false', 'hidden tab has aria-expanded = false')
 
+    $tabs.find('li:first a').trigger('click')
+    assert.strictEqual($tabs.find('.active a').attr('aria-expanded'), 'true', 'after second show event, shown tab still has aria-expanded = true')
+    assert.strictEqual($tabs.find('li:not(.active) a').attr('aria-expanded'), 'false', 'after second show event, hidden tab has aria-expanded = false')
+  })
 
-  // TAB DATA-API
-  // ============
-
-  var clickHandler = function (e) {
-    e.preventDefault()
-    Plugin.call($(this), 'show')
-  }
-
-  $(document)
-    .on('click.bs.tab.data-api', '[data-toggle="tab"]', clickHandler)
-    .on('click.bs.tab.data-api', '[data-toggle="pill"]', clickHandler)
-
-}(jQuery);
+})
