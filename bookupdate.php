@@ -12,9 +12,9 @@ require_once 'connection.php';
 		<meta name="author" content="">
 		<link rel="icon" href="favicon.ico">
 		<title>Update </title>
-		<link href="dist/css/bootstrap.min.css" rel="stylesheet">
-		<link href="assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
-		<script src="assets/js/ie-emulation-modes-warning.js"></script>
+		<link href="bootstrap.min.css" rel="stylesheet">
+		<link href="ie10-viewport-bug-workaround.css" rel="stylesheet">
+		<script src="ie-emulation-modes-warning.js"></script>
 		<link href="style.css" rel="stylesheet">
 	</head>
 <body>
